@@ -2,6 +2,7 @@
 
 namespace HunterKaan\UserStorage;
 
+use HunterKaan\UserStorage\services\ModelService;
 use yii\base\Model;
 use yii\caching\Cache;
 use yii\db\Connection;
@@ -34,6 +35,11 @@ class Storage extends Cache
 	 */
 	public $userTable = '{{%user}}';
 
+	/**
+	 * Identity ID.
+	 *
+	 * @var
+	 */
 	private $_identity_id;
 
 	/**
@@ -49,78 +55,22 @@ class Storage extends Cache
 	}
 
 	/**
-	 * Set user values to model.
+	 * @param Model $model
+	 * @return ModelService
+	 */
+	public function buildModelService(Model $model)
+	{
+		return \Yii::createObject(ModelService::class, [$this, $model]);
+	}
+
+	/**
+	 * Identity ID getter.
 	 *
-	 * @param Model $model
-	 * @param null $storage_key
-	 * @param array $attributes
-	 * @param array $except_attributes
+	 * @return mixed
 	 */
-	public function loadUserValues(Model $model, $storage_key = null, array $attributes = null, array $except_attributes = [])
+	public function getIdentityId()
 	{
-		if ($this->_identity_id) {
-			$storage_key = $this->buildStorageKey($model, $storage_key);
-
-			$userValues = $this->get($storage_key);
-			if ($userValues !== false) {
-				$attributes = $this->getStorageAttributes($model, $attributes, $except_attributes);
-				$attributes = array_replace($attributes, array_intersect_key($userValues, $attributes));
-
-				$model->setAttributes($attributes, true);
-			}
-		}
-	}
-
-	/**
-	 * Store user values from model.
-	 *
-	 * @param Model $model
-	 * @param null $storage_key
-	 * @param array|null $attributes
-	 * @param array $except_attributes
-	 * @return bool
-	 */
-	public function saveUserValues(Model $model, $storage_key = null, array $attributes = null, array $except_attributes = [])
-	{
-		$storage_key = $this->buildStorageKey($model, $storage_key);
-
-		$attributes = $this->getStorageAttributes($model, $attributes, $except_attributes);
-		return $this->set($storage_key, $attributes);
-	}
-
-	/**
-	 * @param Model $model
-	 * @param array|null $attributes
-	 * @param array $except_attributes
-	 * @return array
-	 */
-	protected function getStorageAttributes(Model $model, array $attributes = null, array $except_attributes = [])
-	{
-		if ($model instanceof UserStorageModelInterface) {
-			$userStorageAttributes = $model->userStorageAttributes();
-
-			$attributes = is_null($attributes) ? $userStorageAttributes
-				: array_merge($attributes, $model->userStorageAttributes());
-
-			$attributes = array_unique($attributes);
-		}
-		$attributes = $model->getAttributes($attributes, $except_attributes);
-
-		return $attributes;
-	}
-
-	/**
-	 * @param Model $model
-	 * @param null $storage_key
-	 * @return string
-	 */
-	protected function buildStorageKey($model, $storage_key = null)
-	{
-		if (is_null($storage_key)) {
-			$reflector = new \ReflectionClass($model);
-			$storage_key = $reflector->getName();
-		}
-		return $storage_key;
+		return $this->_identity_id;
 	}
 
 	/**
@@ -221,7 +171,6 @@ class Storage extends Cache
 		return true;
 	}
 
-
 	/**
 	 * Find row ID by key.
 	 *
@@ -262,6 +211,17 @@ class Storage extends Cache
 	}
 
 	/**
+	 * Convert duration to expire at.
+	 *
+	 * @param $duration
+	 * @return int|null
+	 */
+	private function convertDurationToExpireAt($duration)
+	{
+		return $duration > 0 ? time() + $duration : null;
+	}
+
+	/**
 	 * @param $id
 	 * @param $value
 	 * @param $duration
@@ -274,16 +234,5 @@ class Storage extends Cache
 				'option_value' => $value,
 				'expire_at' => $this->convertDurationToExpireAt($duration),
 			], ['id' => $id])->execute();
-	}
-
-	/**
-	 * Convert duration to expire at.
-	 *
-	 * @param $duration
-	 * @return int|null
-	 */
-	private function convertDurationToExpireAt($duration)
-	{
-		return $duration > 0 ? time() + $duration : null;
 	}
 }

@@ -10,13 +10,13 @@ The preferred way to install this extension is through [composer](http://getcomp
 Either run
 
 ```
-php composer.phar require --prefer-dist hunter-kaan/yii2-user-storage "*"
+php composer.phar require --prefer-dist hunter-kaan/yii2-user-storage "^1.0"
 ```
 
 or add
 
 ```
-"hunter-kaan/yii2-user-storage": "*"
+"hunter-kaan/yii2-user-storage": "^1.0"
 ```
 
 to the require section of your `composer.json` file.
@@ -45,7 +45,7 @@ return [
 Before you can go on you need to create those tables in the database.
 To do this, you can use the migration stored in `@vendor/hunter-kaan/yii2-user-storage/migrations`:
 
-```php
+```
 php yii migrate/up --migrationPath=@vendor/hunter-kaan/yii2-user-storage/migrations
 ```
 
@@ -54,15 +54,17 @@ The component extends the `yii\caching\Cache` class.
 A typical usage is like the following:
 ```php
     // To get default form values.
-	$formDefaultValues = $userStorage->get('myForm-default-values');
+	$formDefaultValues = Yii::$app->userStorage->get('myForm-default-values');
 
 	// To store user choose as default form values.
 	$formDefaultValues = ['city_id' => 3];
-	$userStorage->set('myForm-options', $formDefaultValues);
+	Yii::$app->userStorage->set('myForm-options', $formDefaultValues);
 ```
 
 Examples
 -------------
+
+### Model service
 
 Store and load model data:
 
@@ -70,10 +72,17 @@ In your controller:
 ```php
     $model = new Post();
     $model->loadDefaultValues();
-    Yii::$app->userStorage->loadUserValues($model);
+    
+    // Create model service
+    $storageService = Yii::$app->userStorage->buildModelService($model);
+    
+    // Load data from user storage to model
+    $storageService->load();
+
     // ...
     if ($model->load(Yii::$app->getRequest()->getBodyParam()) && $model->save()) {
-        Yii::$app->userStorage->saveUserValues($model);
+        // Save user data to storage
+        $storageService->save();
         // ...
     }
 ```
@@ -98,10 +107,30 @@ class Post extends ActiveRecord implements UserStorageModelInterface
 
 or you must specify safe attributes when loading(saving):
 ```php
-    Yii::$app->userStorage->loadUserValues($model, null, ['pinned']);
+    // Create model service
+    $storageService = Yii::$app->userStorage->buildModelService($model);
+    
+    // Load data from user storage to model
+    $storageService->load(null, ['pinned']);
     // ...
     if ($model->load(Yii::$app->getRequest()->getBodyParam()) && $model->save()) {
-        Yii::$app->userStorage->saveUserValues($model, null, ['pinned']);
+        // Save user data to storage
+        $storageService->save(null, ['pinned']);
+        // ...
+    }
+```
+
+By default model storage key is `YourModel::class`, but it can be redefined:
+```php
+    // Create model service
+    $storageService = Yii::$app->userStorage->buildModelService($model);
+    
+    // Load data from user storage to model
+    $storageService->load(CommonModel::class);
+    // ...
+    if ($model->load(Yii::$app->getRequest()->getBodyParam()) && $model->save()) {
+        // Save user data to storage
+        $storageService->save(CommonModel::class);
         // ...
     }
 ```
