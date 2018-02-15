@@ -88,7 +88,7 @@ class Storage extends Cache
 			$query = new Query();
 			$result = $query->select(['option_value'])
 				->from($this->userStorageTable)
-				->where(['identity_id' => $this->_identity_id])
+				->where(['identity_id' => $this->_identity_id, 'option_key' => $key])
 				->andWhere(['or', 'expire_at IS NULL', ['>=', 'expire_at', time()]])
 				->scalar($this->db);
 		}
